@@ -38,7 +38,7 @@ RUN set -eux; \
     apt-get update; \
     \
     # Install Wine packages based on TARGETARCH
-    if [ "$TARGETARCH" = "386" ] || ["$TARGETARCH" = "x86_64"]; then \
+    if [ "$TARGETARCH" = "i386" ] || ["$TARGETARCH" = "x86_64"]; then \
         apt-get install --no-install-recommends -y \
             wine32 \
             libc6:i386 \
