@@ -39,9 +39,27 @@ jobs:
           - targetarch: "386"
             platform: "linux/amd64"
             arch_tag: "386"
+            use_gui: "false"
           - targetarch: "amd64"
             platform: "linux/amd64"
             arch_tag: "amd64"
+            use_gui: "false"
+          - targetarch: "x86_64"
+            platform: "linux/amd64"
+            arch_tag: "x86_64"
+            use_gui: "false"
+          - targetarch: "386"
+            platform: "linux/amd64"
+            arch_tag: "386"
+            use_gui: "true"
+          - targetarch: "amd64"
+            platform: "linux/amd64"
+            arch_tag: "amd64"
+            use_gui: "true"
+          - targetarch: "x86_64"
+            platform: "linux/amd64"
+            arch_tag: "x86_64"
+            use_gui: "true"
 
     steps:
       - name: Checkout
@@ -90,14 +108,23 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       # Arch-specific tags/labels
+      - name: Resolve tag suffix
+        id: tagsuffix
+        shell: bash
+        run: |
+          if [[ "${{ matrix.use_gui }}" == "true" ]]; then
+            echo "suffix=-gui" >> "$GITHUB_OUTPUT"
+          else
+            echo "suffix=" >> "$GITHUB_OUTPUT"
+          fi
       - name: Docker metadata (arch)
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ steps.vars.outputs.image_name }}
           tags: |
-            type=raw,value=${{ steps.vars.outputs.version }}-${{ matrix.arch_tag }}
-            type=raw,value=latest-${{ matrix.arch_tag }},enable=${{ steps.vars.outputs.push_latest == 'true' }}
+            type=raw,value=${{ steps.vars.outputs.version }}-${{ matrix.arch_tag }}${{ steps.tagsuffix.outputs.suffix }}
+            type=raw,value=latest-${{ matrix.arch_tag }}${{ steps.tagsuffix.outputs.suffix }},enable=${{ steps.vars.outputs.push_latest == 'true' }}
           labels: |
             org.opencontainers.image.title=Generic WINE Runtime Image
             org.opencontainers.image.source=${{ github.repositoryUrl }}
@@ -115,6 +142,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             TARGETARCH=${{ matrix.targetarch }}
+            USE_GUI=${{ matrix.use_gui }}
 
       - name: Summary
         run: |
