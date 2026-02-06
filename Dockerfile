@@ -15,7 +15,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # ----------------------------
 RUN set -eux; \
     # Enable i386 only when building the 32-bit image variant
-    if [ "$TARGETARCH" = "i386" ] || ["$TARGETARCH" = "x86_64"]; then \
+    if [ "$TARGETARCH" = "i386" ] || [ "$TARGETARCH" = "x86_64" ]; then \
         dpkg --add-architecture i386; \
     fi; \
     \
@@ -38,7 +38,7 @@ RUN set -eux; \
     apt-get update; \
     \
     # Install Wine packages based on TARGETARCH
-    if [ "$TARGETARCH" = "i386" ] || ["$TARGETARCH" = "x86_64"]; then \
+    if [ "$TARGETARCH" = "i386" ] || [ "$TARGETARCH" = "x86_64" ]; then \
         apt-get install --no-install-recommends -y \
             wine32 \
             libc6:i386 \
@@ -48,16 +48,14 @@ RUN set -eux; \
             libgnutls30:i386; \
         ln -s /usr/lib/wine/wine32 /usr/local/bin/wine32; \
     fi; \
-    if [ "$TARGETARCH" = "amd64" ] || ["$TARGETARCH" = "x86_64"]; then \
-        apt-get install --no-install-recommends -y \
-            wine64 \
-            libc6 \
-            libstdc++6 \
-            zlib1g \
-            libglib2.0-0 \
-            libgnutls30; \
-        ln -s /usr/lib/wine/wine64 /usr/local/bin/wine64; \
-    fi; \
+    apt-get install --no-install-recommends -y \
+        wine64 \
+        libc6 \
+        libstdc++6 \
+        zlib1g \
+        libglib2.0-0 \
+        libgnutls30; \
+    ln -s /usr/lib/wine/wine64 /usr/local/bin/wine64; \
     if [ "$USE_GUI" = "true" ] || [ "$USE_GUI" = "1" ] || [ "$USE_GUI" = "yes" ]; then \
         apt-get install --no-install-recommends -y \
             libx11-6 \
