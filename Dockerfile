@@ -65,7 +65,7 @@ RUN set -eux; \
             libxrender1 \
             libxcb1 \
             xvfb \
-            xauth \
+            xauth; \
     fi; \
     \
     # Cleanup
