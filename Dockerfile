@@ -1,11 +1,8 @@
 # syntax=docker/dockerfile:1.7
 
-ARG TARGETARCH=amd64
 ARG USE_GUI=false
 FROM lancommander/base:latest
 
-# Re-declare build args after FROM so they exist in this stage
-ARG TARGETARCH
 ARG USE_GUI
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -14,10 +11,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Dependencies + WineHQ
 # ----------------------------
 RUN set -eux; \
-    # Enable i386 only when building the 32-bit image variant
-    if [ "$TARGETARCH" = "i386" ] || [ "$TARGETARCH" = "x86_64" ]; then \
-        dpkg --add-architecture i386; \
-    fi; \
+    dpkg --add-architecture i386; \
     \
     apt-get update; \
     apt-get install --no-install-recommends -y \
@@ -36,26 +30,8 @@ RUN set -eux; \
       > /etc/apt/sources.list.d/winehq.list; \
     \
     apt-get update; \
-    \
-    # Install Wine packages based on TARGETARCH
-    if [ "$TARGETARCH" = "i386" ] || [ "$TARGETARCH" = "x86_64" ]; then \
-        apt-get install --no-install-recommends -y \
-            wine32 \
-            libc6:i386 \
-            libstdc++6:i386 \
-            zlib1g:i386 \
-            libglib2.0-0:i386 \
-            libgnutls30:i386; \
-        ln -s /usr/lib/wine/wine32 /usr/local/bin/wine32; \
-    fi; \
-    apt-get install --no-install-recommends -y \
-        wine64 \
-        libc6 \
-        libstdc++6 \
-        zlib1g \
-        libglib2.0-0 \
-        libgnutls30; \
-    ln -s /usr/lib/wine/wine64 /usr/local/bin/wine64; \
+    apt-get install -y \
+        winehq-stable; \
     if [ "$USE_GUI" = "true" ] || [ "$USE_GUI" = "1" ] || [ "$USE_GUI" = "yes" ]; then \
         apt-get install --no-install-recommends -y \
             libx11-6 \

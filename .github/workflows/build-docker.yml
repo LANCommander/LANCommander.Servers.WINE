@@ -12,7 +12,7 @@ on:
         required: true
         default: "latest"
       push_latest:
-        description: "Also push the :latest tag (arch-suffixed)"
+        description: "Also push the :latest tag"
         required: true
         type: boolean
         default: true
@@ -36,29 +36,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - targetarch: "i386"
-            platform: "linux/amd64"
-            arch_tag: "wine32"
+          - platform: "linux/amd64"
             use_gui: "false"
-          - targetarch: "amd64"
-            platform: "linux/amd64"
-            arch_tag: "wine64"
-            use_gui: "false"
-          - targetarch: "x86_64"
-            platform: "linux/amd64"
-            arch_tag: "wine"
-            use_gui: "false"
-          - targetarch: "i386"
-            platform: "linux/amd64"
-            arch_tag: "wine32"
-            use_gui: "true"
-          - targetarch: "amd64"
-            platform: "linux/amd64"
-            arch_tag: "wine64"
-            use_gui: "true"
-          - targetarch: "x86_64"
-            platform: "linux/amd64"
-            arch_tag: "wine"
+          - platform: "linux/amd64"
             use_gui: "true"
 
     steps:
@@ -95,7 +75,7 @@ jobs:
           echo "push_latest=${PUSH_LATEST}" >> "$GITHUB_OUTPUT"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
-      - name: Set up QEMU (multi-arch)
+      - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
@@ -107,7 +87,6 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # Arch-specific tags/labels
       - name: Resolve tag suffix
         id: tagsuffix
         shell: bash
@@ -117,21 +96,21 @@ jobs:
           else
             echo "suffix=" >> "$GITHUB_OUTPUT"
           fi
-      - name: Docker metadata (arch)
+      - name: Docker metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ steps.vars.outputs.image_name }}
           tags: |
-            type=raw,value=${{ steps.vars.outputs.version }}-${{ matrix.arch_tag }}${{ steps.tagsuffix.outputs.suffix }}
-            type=raw,value=latest-${{ matrix.arch_tag }}${{ steps.tagsuffix.outputs.suffix }},enable=${{ steps.vars.outputs.push_latest == 'true' }}
+            type=raw,value=${{ steps.vars.outputs.version }}${{ steps.tagsuffix.outputs.suffix }}
+            type=raw,value=latest${{ steps.tagsuffix.outputs.suffix }},enable=${{ steps.vars.outputs.push_latest == 'true' }}
           labels: |
             org.opencontainers.image.title=Generic WINE Runtime Image
             org.opencontainers.image.source=${{ github.repositoryUrl }}
             org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.description=WINE base image (arch-specific build)
+            org.opencontainers.image.description=WINE base image for game servers, with optional GUI support.
 
-      - name: Build and push (${{ matrix.platform }}, TARGETARCH=${{ matrix.targetarch }})
+      - name: Build and push (${{ matrix.platform }}, USE_GUI=${{ matrix.use_gui }})
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -141,12 +120,10 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            TARGETARCH=${{ matrix.targetarch }}
             USE_GUI=${{ matrix.use_gui }}
 
       - name: Summary
         run: |
           echo "Pushed image: ${{ steps.vars.outputs.image_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "Arch: ${{ matrix.arch_tag }} (platform ${{ matrix.platform }})" >> $GITHUB_STEP_SUMMARY
           echo "Tags: ${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
           echo "Version: ${{ steps.vars.outputs.version }}" >> $GITHUB_STEP_SUMMARY
