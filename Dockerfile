@@ -1,6 +1,8 @@
 # syntax=docker/dockerfile:1.7
 
-FROM lancommander/base:latest
+# Override to build against a locally built base, e.g. lancommander/base:local
+ARG BASE_IMAGE=lancommander/base:latest
+FROM ${BASE_IMAGE}
 
 ARG WINETRICKS_VERSION=20260125
 
