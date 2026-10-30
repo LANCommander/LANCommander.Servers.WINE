@@ -1,0 +1,38 @@
+#!/bin/sh
+# Run a Windows program under Wine as a headless game server.
+#
+#   START_EXE: wine-run
+#   START_ARGS: srcds.exe -console -game cstrike +map de_dust2
+#
+# - Starts from $WINE_WORKDIR (default $SERVER_ROOT), so relative .exe paths and the game's own
+#   relative file lookups resolve against the merged server directory.
+# - Wraps Wine in Xvfb when WINE_XVFB=true, or when WINE_XVFB=auto and no DISPLAY is set.
+#   GUI-subsystem servers otherwise exit silently because they cannot create a window/console.
+#
+# xvfb-run waits for a signal from Xvfb, which does not arrive when it runs as PID 1. Under the
+# image's entrypoint it never is; if you replace the entrypoint, set `init: true` in compose.
+set -e
+
+: "${WINEPREFIX:=/config/wineprefix}"
+export WINEPREFIX
+
+if [ "$#" -eq 0 ]; then
+    echo "usage: wine-run <program.exe> [args...]" >&2
+    exit 64
+fi
+
+cd "${WINE_WORKDIR:-${SERVER_ROOT:-/config/Merged}}"
+
+case "${WINE_XVFB:-auto}" in
+    true|1|yes) use_xvfb=1 ;;
+    false|0|no) use_xvfb=0 ;;
+    *) if [ -z "${DISPLAY:-}" ]; then use_xvfb=1; else use_xvfb=0; fi ;;
+esac
+
+if [ "$use_xvfb" -eq 1 ]; then
+    exec xvfb-run --auto-servernum \
+        --server-args="-screen 0 ${WINE_XVFB_SCREEN:-1024x768x24}" \
+        wine "$@"
+fi
+
+exec wine "$@"

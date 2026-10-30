@@ -1,11 +1,25 @@
 # syntax=docker/dockerfile:1.7
 
-ARG USE_GUI=false
 FROM lancommander/base:latest
 
-ARG USE_GUI
+ARG WINETRICKS_VERSION=20260125
 
 ENV DEBIAN_FRONTEND=noninteractive
+
+# ----------------------------
+# Wine runtime defaults
+#   - WINEPREFIX lives in /config so it persists and is chowned to the run user by the entrypoint
+#   - mscoree/mshtml are disabled so Wine never stalls headless on the Mono/Gecko install prompts
+#   - WINE_XVFB: auto (use Xvfb when no DISPLAY is set), true, or false; see Scripts/wine-run
+#   - WINE_WORKDIR: directory wine-run starts the program from (empty = $SERVER_ROOT)
+# ----------------------------
+ENV WINEPREFIX=/config/wineprefix \
+    WINEDEBUG=-all \
+    WINEDLLOVERRIDES="mscoree,mshtml=" \
+    WINE_XVFB=auto \
+    WINE_XVFB_SCREEN=1024x768x24 \
+    WINE_WORKDIR="" \
+    XDG_RUNTIME_DIR=/tmp
 
 # ----------------------------
 # Dependencies + WineHQ
@@ -32,15 +46,17 @@ RUN set -eux; \
     apt-get update; \
     apt-get install -y \
         winehq-stable; \
-    if [ "$USE_GUI" = "true" ] || [ "$USE_GUI" = "1" ] || [ "$USE_GUI" = "yes" ]; then \
-        apt-get install --no-install-recommends -y \
-            libx11-6 \
-            libxext6 \
-            libxrender1 \
-            libxcb1 \
-            xvfb \
-            xauth; \
-    fi; \
+    \
+    # Headless display: many Windows dedicated servers are GUI-subsystem programs (e.g. srcds -console
+    # allocates a console window) and exit immediately without an X server
+    apt-get install --no-install-recommends -y \
+        xvfb \
+        xauth; \
+    \
+    # Winetricks dependencies
+    apt-get install --no-install-recommends -y \
+        cabextract \
+        unzip; \
     \
     # Cleanup
     apt-get purge -y --auto-remove gnupg; \
@@ -48,18 +64,20 @@ RUN set -eux; \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # ----------------------------
-# Winetricks
+# Winetricks (pinned release)
 # ----------------------------
 RUN set -eux; \
-    curl -fsSL https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks \
+    curl -fsSL "https://raw.githubusercontent.com/Winetricks/winetricks/${WINETRICKS_VERSION}/src/winetricks" \
       -o /usr/bin/winetricks; \
     chmod +x /usr/bin/winetricks
 
 # ----------------------------
-# LANCommander hooks/modules
+# Launcher + LANCommander hooks
 # ----------------------------
-# COPY Modules/ "${BASE_MODULES}/"
-# COPY Hooks/ "${BASE_HOOKS}/"
+COPY Scripts/wine-run /usr/local/bin/wine-run
+RUN chmod +x /usr/local/bin/wine-run
+
+COPY Hooks/ "${BASE_HOOKS}/"
 
 VOLUME ["/config"]
 

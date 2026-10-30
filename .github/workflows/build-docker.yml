@@ -32,15 +32,6 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
 
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: "linux/amd64"
-            use_gui: "false"
-          - platform: "linux/amd64"
-            use_gui: "true"
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -87,40 +78,32 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Resolve tag suffix
-        id: tagsuffix
-        shell: bash
-        run: |
-          if [[ "${{ matrix.use_gui }}" == "true" ]]; then
-            echo "suffix=-gui" >> "$GITHUB_OUTPUT"
-          else
-            echo "suffix=" >> "$GITHUB_OUTPUT"
-          fi
       - name: Docker metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ steps.vars.outputs.image_name }}
+          # Xvfb is always included now; the -gui tags are kept as aliases so existing users keep updating
           tags: |
-            type=raw,value=${{ steps.vars.outputs.version }}${{ steps.tagsuffix.outputs.suffix }}
-            type=raw,value=latest${{ steps.tagsuffix.outputs.suffix }},enable=${{ steps.vars.outputs.push_latest == 'true' }}
+            type=raw,value=${{ steps.vars.outputs.version }}
+            type=raw,value=${{ steps.vars.outputs.version }}-gui
+            type=raw,value=latest,enable=${{ steps.vars.outputs.push_latest == 'true' }}
+            type=raw,value=latest-gui,enable=${{ steps.vars.outputs.push_latest == 'true' }}
           labels: |
             org.opencontainers.image.title=Generic WINE Runtime Image
             org.opencontainers.image.source=${{ github.repositoryUrl }}
             org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.description=WINE base image for game servers, with optional GUI support.
+            org.opencontainers.image.description=WINE base image for headless game servers (includes Xvfb).
 
-      - name: Build and push (${{ matrix.platform }}, USE_GUI=${{ matrix.use_gui }})
+      - name: Build and push
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
-          platforms: ${{ matrix.platform }}
+          platforms: linux/amd64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            USE_GUI=${{ matrix.use_gui }}
 
       - name: Summary
         run: |
